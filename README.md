@@ -161,21 +161,6 @@ See `requirements.txt` for full list. Main dependencies:
 
 ---
 
-## 📚 Citation
-
-If you use this code in your research, please cite:
-
-```bibtex
-@misc{jepa-agent2026,
-  author = {Your Name},
-  title = {JEPA-Agent: Geometric Agency for LLM Tool Use},
-  year = {2026},
-  publisher = {GitHub},
-  url = {https://github.com/yourusername/jepa-agent}
-}
-```
-
----
 
 ## 📜 License
 
