@@ -1,0 +1,19 @@
+{
+  "model_id": "Qwen/Qwen3-8B",
+  "routing_mode": "none",
+  "condition_a": {
+    "success_rate": 0.525,
+    "dominant_failure": "no_tool",
+    "no_tool_rate": 0.3
+  },
+  "condition_b": {
+    "success_rate": 0.375,
+    "dominant_failure": "no_tool",
+    "no_tool_rate": 0.35
+  },
+  "delta_success": -0.15000000000000002,
+  "delta_no_tool": 0.04999999999999999,
+  "contrastive_embedding": {
+    "status": "skipped"
+  }
+}

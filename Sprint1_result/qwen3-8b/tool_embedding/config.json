@@ -1,0 +1,32 @@
+{
+  "hidden_dim": 4096,
+  "embed_dim": 128,
+  "n_tools": 25,
+  "tool_name_to_idx": {
+    "web_search": 0,
+    "fetch_url": 1,
+    "wikipedia_lookup": 2,
+    "arxiv_search": 3,
+    "get_weather": 4,
+    "python_execute": 5,
+    "python_eval": 6,
+    "shell_command": 7,
+    "install_package": 8,
+    "create_plot": 9,
+    "read_file": 10,
+    "write_file": 11,
+    "list_directory": 12,
+    "csv_analyze": 13,
+    "json_query": 14,
+    "send_email": 15,
+    "send_slack_message": 16,
+    "schedule_meeting": 17,
+    "create_todo": 18,
+    "translate_text": 19,
+    "calculator": 20,
+    "unit_convert": 21,
+    "summarize_text": 22,
+    "get_current_datetime": 23,
+    "generate_id": 24
+  }
+}
