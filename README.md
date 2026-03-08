@@ -2,29 +2,29 @@
 
 *An AI agent based on Joint Embedding Predictive Architecture.*
 Sprint 0: baseline + diagnostics + Â validation + **geometric scaling analysis**.
-**Sprint 1: Â detector + gating — 76% success rate ( +26% over baseline)**
+**Sprint 1: Â detector + gating — up to 76% success rate (+26 to +49 points over baseline)**
 
 > **Note:** All code comments and docstrings in the project are in **French** (a deliberate choice for maintainers), but this README and user-facing interfaces are in English.
 
 ---
 
-## 🎯 **Key Results — Sprint 1**
+## 🎯 **Key Results — Sprint 1 (Complete Scaling Analysis)**
 
-We successfully transformed a geometric signal (`Â`) into an operational **agentivity detector**, achieving:
+We successfully transformed a geometric signal (`Â`) into an operational **agentivity detector**, with consistent gains across all model sizes:
 
-| Metric | Baseline | Sprint 1 (Â gating) | Δ |
-|--------|----------|---------------------|-----|
-| **Success rate** | 50% | **76.3%** | **+26.3%** |
-| **No-tool rate** | 43% | **2.6%** | **-40.4%** |
-| **Wrong tool** | 7% | **2.6%** | **-4.4%** |
+| Model | Baseline | Sprint 1 (Â gating) | Gain | No-tool before | No-tool after |
+|-------|----------|---------------------|------|----------------|---------------|
+| **Qwen3-1.7B** | 26% | **75%** | **+49 pts** 🚀 | 73% | **3.1%** |
+| **Qwen3-4B** | 26% | **68%** | **+42 pts** 📈 | 73% | **3.2%** |
+| **Qwen3-8B** | 50% | **76%** | **+26 pts** 🎯 | 43% | **2.6%** |
 
 📊 **Detailed results available in** [`sprint_1_results/`](sprint_1_results/)
 
-### 🔥 What the LLM judge says:
-- **76.3%** tasks completed successfully
-- **78.9%** correct tool usage
-- **52.6%** tool usage rated "optimal"
-- Only **2.6%** "no_tool" failures (down from 43%!)
+### 🔥 Key insights:
+- **The smaller the model, the larger the gain** — geometry compensates for weaker text decoding
+- **The "no-tool" problem is solved** across all scales (from 73% → ~3%)
+- **Â signal is universal** (AUC > 0.94 on 1.7B, 4B, and 8B)
+- **Performance plateaus at ~75-76%** — next challenge is parameter quality
 
 [See full evaluation →](sprint_1_results/qwen3-8b/evaluation.json)
 
@@ -36,10 +36,11 @@ We successfully transformed a geometric signal (`Â`) into an operational **agen
 |------------|------------|
 | The signal `Â` (agentivity) exists | ✅ AUC > 0.94 across all model sizes |
 | It can be extracted geometrically | ✅ Linear probe works with near-perfect separation |
-| It can guide an agent in real-time | ✅ **76% success rate** on 40 diverse tasks |
-| It solves the "no_tool" problem | ✅ **43% → 2.6%** reduction |
+| It guides agents in real-time | ✅ **68-76% success rate** on 40 diverse tasks |
+| It solves the "no-tool" problem | ✅ **73% → ~3%** reduction |
+| **Scaling law discovered** | ✅ **Smaller models benefit more** (+49 pts on 1.7B) |
 
-**Key insight:** The hidden state right before a tool call is **linearly separable** from non-tool states — even in small models (1.7B). This geometric property is universal and exploitable.
+**Key insight:** The hidden state right before a tool call is **linearly separable** from non-tool states — even in tiny models (1.7B). This geometric property is universal and exploitable, and **most valuable where text generation is weakest**.
 
 ---
 
@@ -68,9 +69,9 @@ python run_sprint1.py --sprint0-dir results/sprint0 --scaling-preset
 | Model | VRAM | Note |
 |-------|------|------|
 | Qwen3-0.6B | ~1 GB | Baseline, interesting for max delta |
-| Qwen3-1.7B | ~3 GB | Good signal/size trade-off |
-| Qwen3-4B | ~6 GB | Intermediate point |
-| Qwen3-8B | ~14 GB | Main reference |
+| Qwen3-1.7B | ~3 GB | **Biggest gain: +49 pts** |
+| Qwen3-4B | ~6 GB | **+42 pts gain** |
+| Qwen3-8B | ~14 GB | Main reference, **+26 pts** |
 | Qwen3-14B | ~28 GB | Optional, if budget allows |
 
 Models are loaded and unloaded **sequentially**—only one in VRAM at a time.
@@ -83,23 +84,20 @@ Models are loaded and unloaded **sequentially**—only one in VRAM at a time.
 results/
 ├── sprint0/                          # Baseline & diagnostics
 │   ├── scaling_analysis.json         # Geometric scaling across models
-│   └── qwen3-8b/
-│       ├── traces.json                # Raw traces
-│       ├── a_hat_extracted.npy        # Â direction
-│       └── hidden_states/             # .npy per step
+│   ├── qwen3-1.7b/                   # 1.7B results (baseline 26%)
+│   ├── qwen3-4b/                     # 4B results (baseline 26%)
+│   └── qwen3-8b/                     # 8B results (baseline 50%)
 │
 ├── sprint1/                          # Â detector results
-│   └── qwen3-8b/
-│       ├── traces_sprint1.json        # Agent traces with Â gating
-│       ├── evaluation.json             # LLM-as-a-judge results
-│       └── checkpoint.json             # Resume point
+│   ├── qwen3-1.7b/                   # 75% success rate
+│   ├── qwen3-4b/                     # 68% success rate
+│   └── qwen3-8b/                     # 76% success rate
 │
 └── sprint_1_results/                  # Full analysis & benchmarks
-    ├── README.md
-    ├── qwen3-8b/
-    │   ├── evaluation.json
-    │   └── failure_analysis.json
-    └── comparison_baseline_vs_sprint1.md
+    ├── scaling_comparison.md          # Cross-model analysis
+    ├── qwen3-1.7b/evaluation.json
+    ├── qwen3-4b/evaluation.json
+    └── qwen3-8b/evaluation.json
 ```
 
 ---
@@ -158,32 +156,38 @@ Rule-based evaluation misses subtle failures (hallucinations, wrong timing). LLM
 
 ---
 
-## 📈 **Sprint 1 Results — Detailed**
+## 📈 **Sprint 1 Results — Detailed by Model**
 
-From LLM judge evaluation on 40 single tasks:
+### Qwen3-1.7B (from 26% to 75%)
+```
+✅ Success rate: 75.0%
+🎯 Correct tool usage: 75.0%
+🔧 Optimal tool usage: 50.0%
+❌ No-tool rate: 3.1%
+🔥 Hallucinated tools: 9.4%
+```
 
+### Qwen3-4B (from 26% to 68%)
+```
+✅ Success rate: 67.7%
+🎯 Correct tool usage: 61.3%
+🔧 Optimal tool usage: 51.6%
+❌ No-tool rate: 3.2%
+🔥 Hallucinated tools: 9.7%
+```
+
+### Qwen3-8B (from 50% to 76%)
 ```
 ✅ Success rate: 76.3%
 🎯 Correct tool usage: 78.9%
-🔧 Tool usage quality:
-   optimal     52.6%
-   suboptimal  15.8%
-   acceptable  10.5%
-   wrong       13.2%
-   none         7.9%
-
-❌ Failure modes:
-   success          71.1%
-   max_steps        10.5%
-   wrong_params     10.5%
-   wrong_tool        2.6%
-   no_tool           2.6%
-   hallucinated      2.6%
+🔧 Optimal tool usage: 52.6%
+❌ No-tool rate: 2.6%
+🔥 Hallucinated tools: 2.6%
 ```
 
-**Key achievement:** The "no_tool" failure mode — dominant in baseline (43%) — is now **almost eliminated** (2.6%).
+**Key achievement:** The "no_tool" failure mode — dominant in baseline (43-73%) — is now **almost eliminated across all scales** (down to ~3%).
 
-[Full results →](sprint_1_results/qwen3-8b/evaluation.json)
+[Full results →](sprint_1_results/)
 
 ---
 
