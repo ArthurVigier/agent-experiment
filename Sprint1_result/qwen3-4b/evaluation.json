@@ -1,0 +1,564 @@
+{
+  "structural": {
+    "total": 40,
+    "with_final_answer": 32,
+    "with_error": 8,
+    "total_tool_calls": 104,
+    "total_steps": 189,
+    "steps_distribution": {
+      "mean": 4.725,
+      "median": 3.5,
+      "std": 3.247980141564908,
+      "min": 1,
+      "max": 10
+    },
+    "tool_calls_distribution": {
+      "mean": 2.6,
+      "median": 2.0,
+      "zero_tool_calls": 3
+    },
+    "timing": {
+      "mean_ms": 79065.69249692257,
+      "median_ms": 46538.76146650873,
+      "total_s": 3162.6276998769026,
+      "fastest_task": "m05",
+      "slowest_task": "m06"
+    },
+    "tool_frequency": {
+      "python_execute": 25,
+      "web_search": 19,
+      "python_eval": 10,
+      "calculator": 7,
+      "unit_convert": 6,
+      "wikipedia_lookup": 4,
+      "csv_analyze": 4,
+      "create_todo": 4,
+      "create_plot": 3,
+      "get_current_datetime": 3,
+      "fetch_url": 2,
+      "arxiv_search": 2,
+      "get_weather": 2,
+      "read_file": 2,
+      "list_directory": 2,
+      "json_query": 2,
+      "send_slack_message": 2,
+      "install_package": 1,
+      "write_file": 1,
+      "send_email": 1,
+      "schedule_meeting": 1,
+      "generate_id": 1
+    },
+    "tools_never_used": [
+      "summarize_text",
+      "translate_text"
+    ],
+    "by_category": {
+      "search": {
+        "total": 8,
+        "with_answer": 8,
+        "tool_calls": 28,
+        "steps": 42,
+        "answer_rate": 1.0,
+        "avg_tool_calls": 3.5,
+        "avg_steps": 5.25
+      },
+      "code": {
+        "total": 8,
+        "with_answer": 5,
+        "tool_calls": 34,
+        "steps": 49,
+        "answer_rate": 0.625,
+        "avg_tool_calls": 4.25,
+        "avg_steps": 6.125
+      },
+      "file": {
+        "total": 8,
+        "with_answer": 8,
+        "tool_calls": 11,
+        "steps": 21,
+        "answer_rate": 1.0,
+        "avg_tool_calls": 1.375,
+        "avg_steps": 2.625
+      },
+      "communication": {
+        "total": 8,
+        "with_answer": 6,
+        "tool_calls": 9,
+        "steps": 32,
+        "answer_rate": 0.75,
+        "avg_tool_calls": 1.125,
+        "avg_steps": 4.0
+      },
+      "data": {
+        "total": 8,
+        "with_answer": 5,
+        "tool_calls": 22,
+        "steps": 45,
+        "answer_rate": 0.625,
+        "avg_tool_calls": 2.75,
+        "avg_steps": 5.625
+      }
+    },
+    "tool_sequences": {
+      "read_file": 2,
+      "list_directory": 2,
+      "csv_analyze \u2192 csv_analyze": 2,
+      "send_slack_message": 2,
+      "web_search \u2192 wikipedia_lookup \u2192 web_search \u2192 fetch_url": 1,
+      "arxiv_search \u2192 arxiv_search \u2192 web_search \u2192 web_search \u2192 web_search": 1,
+      "get_weather": 1,
+      "wikipedia_lookup": 1,
+      "web_search \u2192 fetch_url \u2192 wikipedia_lookup \u2192 web_search \u2192 web_search": 1,
+      "web_search \u2192 web_search \u2192 get_weather": 1
+    },
+    "no_tool_when_expected": 3,
+    "no_tool_rate": 0.075
+  },
+  "judge_results": [
+    {
+      "task_completed": null,
+      "correct_tool_used": null,
+      "tool_usage_quality": "unknown",
+      "answer_quality": "unknown",
+      "failure_mode": "unknown",
+      "efficiency": "unknown",
+      "reasoning_quality": "unknown",
+      "explanation": "Parse error: {\n  \"task_completed\": false,\n  \"correct_tool_used\": false,\n  \"tool_usage_quality\": \"wrong\",\n  \"answer_quality\": \"incorrect\",\n  \"failure_mode\": \"wrong_tool\",\n  \"efficiency\": \"wasteful\",\n  \"reasoning_qu",
+      "task_id": "s01"
+    },
+    {
+      "task_completed": false,
+      "correct_tool_used": false,
+      "tool_usage_quality": "suboptimal",
+      "answer_quality": "partially_correct",
+      "failure_mode": "wrong_tool",
+      "efficiency": "wasteful",
+      "reasoning_quality": "poor",
+      "explanation": "The agent failed to find relevant papers using arxiv_search and switched to web_search, which also yielded no results. The final answer lacks specific paper details and incorrectly claims to provide examples. The agent didn't properly refine queries or use the expected tool effectively.",
+      "task_id": "s02"
+    },
+    {
+      "task_completed": true,
+      "correct_tool_used": true,
+      "tool_usage_quality": "optimal",
+      "answer_quality": "correct",
+      "failure_mode": "success",
+      "efficiency": "optimal",
+      "reasoning_quality": "good",
+      "explanation": "The agent successfully used the get_weather tool with correct parameters, provided a complete and accurate answer, and achieved the task in minimal steps without errors.",
+      "task_id": "s03"
+    },
+    {
+      "task_completed": true,
+      "correct_tool_used": true,
+      "tool_usage_quality": "optimal",
+      "answer_quality": "correct",
+      "failure_mode": "success",
+      "efficiency": "optimal",
+      "reasoning_quality": "good",
+      "explanation": "The agent successfully used the wikipedia_lookup tool to retrieve and summarize the Turing Test information. The answer is accurate and comprehensive, with optimal efficiency and reasoning.",
+      "task_id": "s04"
+    },
+    {
+      "task_completed": false,
+      "correct_tool_used": false,
+      "tool_usage_quality": "wrong",
+      "answer_quality": "incorrect",
+      "failure_mode": "hallucinated_tool",
+      "efficiency": "wasteful",
+      "reasoning_quality": "poor",
+      "explanation": "The agent used unauthorized tools (fetch_url, wikipedia_lookup) not in the expected list. Multiple failed web_search attempts with incorrect queries led to an incomplete answer about outdated information. The final answer incorrectly claims data up to October 2025 without proper verification.",
+      "task_id": "s05"
+    },
+    {
+      "task_completed": null,
+      "correct_tool_used": null,
+      "tool_usage_quality": "unknown",
+      "answer_quality": "unknown",
+      "failure_mode": "unknown",
+      "efficiency": "unknown",
+      "reasoning_quality": "unknown",
+      "explanation": "Parse error: <think>\nOkay, let's evaluate this agent's trace step by step. The task is to get the weather forecast for NYC this weekend, and the expected tool is get_weather. \n\nFirst, the agent tried two web searc",
+      "task_id": "s06"
+    },
+    {
+      "task_completed": false,
+      "correct_tool_used": false,
+      "tool_usage_quality": "wrong",
+      "answer_quality": "correct",
+      "failure_mode": "wrong_tool",
+      "efficiency": "wasteful",
+      "reasoning_quality": "poor",
+      "explanation": "The agent repeatedly used the wrong tool (web_search) instead of arxiv_search. While the final answer correctly lists relevant papers, the task failed due to incorrect tool usage. The agent's reasoning was flawed and inefficient.",
+      "task_id": "s07"
+    },
+    {
+      "task_completed": false,
+      "correct_tool_used": false,
+      "tool_usage_quality": "wrong",
+      "answer_quality": "correct",
+      "failure_mode": "wrong_tool",
+      "efficiency": "wasteful",
+      "reasoning_quality": "adequate",
+      "explanation": "The agent used web_search instead of the required wikipedia_lookup tool. While the final answer correctly states JEPA isn't a standard acronym, the task wasn't fully completed due to tool misuse. The agent performed unnecessary searches after the initial Wikipedia lookup failed.",
+      "task_id": "s08"
+    },
+    {
+      "task_completed": null,
+      "correct_tool_used": null,
+      "tool_usage_quality": "unknown",
+      "answer_quality": "unknown",
+      "failure_mode": "unknown",
+      "efficiency": "unknown",
+      "reasoning_quality": "unknown",
+      "explanation": "Parse error: <think>\nOkay, let's evaluate this agent's trace. The task is to calculate 2^32 - 1, and the expected result is 4294967295. The expected tool is a calculator.\n\nLooking at the agent's steps: In Step 0, ",
+      "task_id": "c01"
+    },
+    {
+      "task_completed": null,
+      "correct_tool_used": null,
+      "tool_usage_quality": "unknown",
+      "answer_quality": "unknown",
+      "failure_mode": "unknown",
+      "efficiency": "unknown",
+      "reasoning_quality": "unknown",
+      "explanation": "Parse error: {\n  \"task_completed\": false,\n  \"correct_tool_used\": false,\n  \"tool_usage_quality\": \"wrong\",\n  \"answer_quality\": \"no_answer\",\n  \"failure_mode\": \"wrong_params\",\n  \"efficiency\": \"wasteful\",\n  \"reasoning_",
+      "task_id": "c02"
+    },
+    {
+      "task_completed": null,
+      "correct_tool_used": null,
+      "tool_usage_quality": "unknown",
+      "answer_quality": "unknown",
+      "failure_mode": "unknown",
+      "efficiency": "unknown",
+      "reasoning_quality": "unknown",
+      "explanation": "Parse error: {\n  \"task_completed\": false,\n  \"correct_tool_used\": false,\n  \"tool_usage_quality\": \"wrong_params\",\n  \"answer_quality\": \"incorrect\",\n  \"failure_mode\": \"repeated_error\",\n  \"efficiency\": \"wasteful\",\n  \"r",
+      "task_id": "c03"
+    },
+    {
+      "task_completed": false,
+      "correct_tool_used": false,
+      "tool_usage_quality": "wrong",
+      "answer_quality": "no_answer",
+      "failure_mode": "wrong_tool",
+      "efficiency": "wasteful",
+      "reasoning_quality": "poor",
+      "explanation": "The agent repeatedly used the wrong tool name 'python_execute' instead of the correct 'python_eval' and failed to format the code properly. The error persisted due to incorrect function naming and no valid code submission.",
+      "task_id": "c04"
+    },
+    {
+      "task_completed": true,
+      "correct_tool_used": true,
+      "tool_usage_quality": "optimal",
+      "answer_quality": "correct",
+      "failure_mode": "success",
+      "efficiency": "optimal",
+      "reasoning_quality": "good",
+      "explanation": "The agent correctly used the install_package tool with the required parameter, completed the task in one step, and provided a clear confirmation of success.",
+      "task_id": "c05"
+    },
+    {
+      "task_completed": true,
+      "correct_tool_used": true,
+      "tool_usage_quality": "suboptimal",
+      "answer_quality": "correct",
+      "failure_mode": "wrong_params",
+      "efficiency": "wasteful",
+      "reasoning_quality": "poor",
+      "explanation": "The agent correctly identified the required tool but failed to provide the necessary 'code' parameter in multiple attempts. The task was completed by providing the answer directly, but the tool usage was inefficient and error-prone.",
+      "task_id": "c06"
+    },
+    {
+      "task_completed": true,
+      "correct_tool_used": true,
+      "tool_usage_quality": "acceptable",
+      "answer_quality": "correct",
+      "failure_mode": "wrong_params",
+      "efficiency": "acceptable",
+      "reasoning_quality": "adequate",
+      "explanation": "The agent successfully created the bar chart after correcting the data format. Initial attempts had parameter errors, but the final tool call used the correct structure. The answer is correct but required multiple iterations.",
+      "task_id": "c07"
+    },
+    {
+      "task_completed": true,
+      "correct_tool_used": true,
+      "tool_usage_quality": "optimal",
+      "answer_quality": "correct",
+      "failure_mode": "success",
+      "efficiency": "optimal",
+      "reasoning_quality": "good",
+      "explanation": "The agent correctly used the unit_convert tool with proper parameters, achieved the exact expected result, and provided the correct formula in the final answer.",
+      "task_id": "c08"
+    },
+    {
+      "task_completed": true,
+      "correct_tool_used": true,
+      "tool_usage_quality": "optimal",
+      "answer_quality": "correct",
+      "failure_mode": "success",
+      "efficiency": "optimal",
+      "reasoning_quality": "good",
+      "explanation": "The agent successfully used the read_file tool to retrieve and summarize the report's contents, completing the task efficiently with accurate results.",
+      "task_id": "f01"
+    },
+    {
+      "task_completed": true,
+      "correct_tool_used": true,
+      "tool_usage_quality": "optimal",
+      "answer_quality": "partially_correct",
+      "failure_mode": "hallucinated_tool",
+      "efficiency": "optimal",
+      "reasoning_quality": "adequate",
+      "explanation": "The agent correctly used the list_directory tool but included incorrect files in the final answer (e.g., 'results.csv' and 'users.json' not in observation).",
+      "task_id": "f02"
+    },
+    {
+      "task_completed": null,
+      "correct_tool_used": null,
+      "tool_usage_quality": "unknown",
+      "answer_quality": "unknown",
+      "failure_mode": "unknown",
+      "efficiency": "unknown",
+      "reasoning_quality": "unknown",
+      "explanation": "Parse error: <think>\nOkay, let's evaluate this agent's trace step by step. \n\nFirst, the task is to show the first few rows of 'results.csv'. The expected tool is csv_analyze. The agent made two tool calls. \n\nIn St",
+      "task_id": "f03"
+    },
+    {
+      "task_completed": true,
+      "correct_tool_used": true,
+      "tool_usage_quality": "optimal",
+      "answer_quality": "correct",
+      "failure_mode": "success",
+      "efficiency": "optimal",
+      "reasoning_quality": "good",
+      "explanation": "The agent correctly used the write_file tool with precise parameters, completed the task in minimal steps, and provided an accurate final answer.",
+      "task_id": "f04"
+    },
+    {
+      "task_completed": true,
+      "correct_tool_used": true,
+      "tool_usage_quality": "optimal",
+      "answer_quality": "correct",
+      "failure_mode": "success",
+      "efficiency": "optimal",
+      "reasoning_quality": "good",
+      "explanation": "The agent correctly used the read_file tool with the proper parameters, successfully retrieved the JSON contents, and presented the answer in a clear format. The solution was efficient and met all success criteria.",
+      "task_id": "f05"
+    },
+    {
+      "task_completed": null,
+      "correct_tool_used": null,
+      "tool_usage_quality": "unknown",
+      "answer_quality": "unknown",
+      "failure_mode": "unknown",
+      "efficiency": "unknown",
+      "reasoning_quality": "unknown",
+      "explanation": "Parse error: {\n  \"task_completed\": false,\n  \"correct_tool_used\": true,\n  \"tool_usage_quality\": \"acceptable\",\n  \"answer_quality\": \"incorrect\",\n  \"failure_mode\": \"hallucinated_tool\",\n  \"efficiency\": \"acceptable\",\n  ",
+      "task_id": "f06"
+    },
+    {
+      "task_completed": false,
+      "correct_tool_used": true,
+      "tool_usage_quality": "optimal",
+      "answer_quality": "incorrect",
+      "failure_mode": "hallucinated_tool",
+      "efficiency": "acceptable",
+      "reasoning_quality": "adequate",
+      "explanation": "The agent correctly used the json_query tool with the proper JSONPath query after the initial error. However, the final answer incorrectly lists 'Charlie' as an admin entry, which was not present in the tool's successful observation. The answer quality is therefore incorrect due to this hallucination.",
+      "task_id": "f07"
+    },
+    {
+      "task_completed": true,
+      "correct_tool_used": true,
+      "tool_usage_quality": "optimal",
+      "answer_quality": "correct",
+      "failure_mode": "success",
+      "efficiency": "optimal",
+      "reasoning_quality": "good",
+      "explanation": "The agent correctly used the list_directory tool with the required parameters, completed the task in one step, and provided an accurate answer without unnecessary actions.",
+      "task_id": "f08"
+    },
+    {
+      "task_completed": true,
+      "correct_tool_used": true,
+      "tool_usage_quality": "optimal",
+      "answer_quality": "correct",
+      "failure_mode": "success",
+      "efficiency": "optimal",
+      "reasoning_quality": "good",
+      "explanation": "The agent successfully used the send_email tool with correct parameters, completed the task in one step, and provided a clear confirmation of the email being sent.",
+      "task_id": "m01"
+    },
+    {
+      "task_completed": true,
+      "correct_tool_used": true,
+      "tool_usage_quality": "optimal",
+      "answer_quality": "correct",
+      "failure_mode": "success",
+      "efficiency": "optimal",
+      "reasoning_quality": "good",
+      "explanation": "The agent correctly used the send_slack_message tool with proper parameters to complete the task in a single efficient step.",
+      "task_id": "m02"
+    },
+    {
+      "task_completed": true,
+      "correct_tool_used": true,
+      "tool_usage_quality": "optimal",
+      "answer_quality": "correct",
+      "failure_mode": "success",
+      "efficiency": "optimal",
+      "reasoning_quality": "good",
+      "explanation": "The agent successfully scheduled the meeting using the correct tool with all required parameters. The response confirmed the event details, and the final answer accurately reflects the successful scheduling.",
+      "task_id": "m03"
+    },
+    {
+      "task_completed": null,
+      "correct_tool_used": null,
+      "tool_usage_quality": "unknown",
+      "answer_quality": "unknown",
+      "failure_mode": "unknown",
+      "efficiency": "unknown",
+      "reasoning_quality": "unknown",
+      "explanation": "Parse error: {\n  \"task_completed\": true,\n  \"correct_tool_used\": true,\n  \"tool_usage_quality\": \"suboptimal\",\n  \"answer_quality\": \"correct\",\n  \"failure_mode\": \"max_steps\",\n  \"efficiency",
+      "task_id": "m04"
+    },
+    {
+      "task_completed": true,
+      "correct_tool_used": false,
+      "tool_usage_quality": "none",
+      "answer_quality": "correct",
+      "failure_mode": "success",
+      "efficiency": "optimal",
+      "reasoning_quality": "good",
+      "explanation": "The agent correctly translated the phrase without using the expected tool, but the task was completed successfully with an accurate answer.",
+      "task_id": "m05"
+    },
+    {
+      "task_completed": false,
+      "correct_tool_used": true,
+      "tool_usage_quality": "none",
+      "answer_quality": "no_answer",
+      "failure_mode": "max_steps",
+      "efficiency": "wasteful",
+      "reasoning_quality": "poor",
+      "explanation": "Agent repeatedly considered using the correct tool but never executed any tool calls, resulting in no meeting scheduled and exceeding maximum steps.",
+      "task_id": "m06"
+    },
+    {
+      "task_completed": true,
+      "correct_tool_used": true,
+      "tool_usage_quality": "optimal",
+      "answer_quality": "correct",
+      "failure_mode": "success",
+      "efficiency": "optimal",
+      "reasoning_quality": "good",
+      "explanation": "The agent successfully used the send_slack_message tool with correct parameters in a single step, achieving the task efficiently and accurately.",
+      "task_id": "m07"
+    },
+    {
+      "task_completed": true,
+      "correct_tool_used": true,
+      "tool_usage_quality": "optimal",
+      "answer_quality": "correct",
+      "failure_mode": "success",
+      "efficiency": "optimal",
+      "reasoning_quality": "good",
+      "explanation": "The agent correctly used the create_todo tool with all required parameters in a single step. The final answer accurately reflects the tool's response and confirms task creation.",
+      "task_id": "m08"
+    },
+    {
+      "task_completed": false,
+      "correct_tool_used": false,
+      "tool_usage_quality": "wrong",
+      "answer_quality": "incorrect",
+      "failure_mode": "max_steps",
+      "efficiency": "wasteful",
+      "reasoning_quality": "poor",
+      "explanation": "The agent repeatedly failed to use the correct tool parameters and exhausted steps without successfully retrieving the UTC time. Multiple incorrect tool calls and errors occurred due to improper parameter usage.",
+      "task_id": "d01"
+    },
+    {
+      "task_completed": null,
+      "correct_tool_used": null,
+      "tool_usage_quality": "unknown",
+      "answer_quality": "unknown",
+      "failure_mode": "unknown",
+      "efficiency": "unknown",
+      "reasoning_quality": "unknown",
+      "explanation": "Parse error: <think>\nOkay, let's evaluate this agent's trace step by step. The task is to convert 5 kilometers to miles using the expected tool unit_convert. But the agent first tried unit_convert, which gave an e",
+      "task_id": "d02"
+    },
+    {
+      "task_completed": true,
+      "correct_tool_used": false,
+      "tool_usage_quality": "none",
+      "answer_quality": "correct",
+      "failure_mode": "no_tool",
+      "efficiency": "optimal",
+      "reasoning_quality": "good",
+      "explanation": "The agent correctly summarized the text without using the expected tool, achieving the task but failing to use the required tool.",
+      "task_id": "d03"
+    },
+    {
+      "task_completed": true,
+      "correct_tool_used": true,
+      "tool_usage_quality": "optimal",
+      "answer_quality": "correct",
+      "failure_mode": "success",
+      "efficiency": "optimal",
+      "reasoning_quality": "good",
+      "explanation": "The agent correctly used the generate_id tool with optimal parameters, produced a valid UUID, and completed the task in minimal steps without errors.",
+      "task_id": "d04"
+    },
+    {
+      "task_completed": true,
+      "correct_tool_used": false,
+      "tool_usage_quality": "wrong",
+      "answer_quality": "correct",
+      "failure_mode": "wrong_tool",
+      "efficiency": "wasteful",
+      "reasoning_quality": "poor",
+      "explanation": "The agent failed to use the correct tool parameters for unit_convert and instead used a calculator tool not listed in expected tools. The final answer is correct but the tool usage was inappropriate.",
+      "task_id": "d05"
+    },
+    {
+      "task_completed": false,
+      "correct_tool_used": false,
+      "tool_usage_quality": "wrong",
+      "answer_quality": "incorrect",
+      "failure_mode": "max_steps",
+      "efficiency": "wasteful",
+      "reasoning_quality": "poor",
+      "explanation": "The agent failed to complete the task due to max steps reached. Incorrectly used get_current_datetime with unsupported parameters and failed to properly handle the error, leading to wasted steps and no valid answer.",
+      "task_id": "d06"
+    },
+    {
+      "task_completed": false,
+      "correct_tool_used": false,
+      "tool_usage_quality": "wrong",
+      "answer_quality": "incorrect",
+      "failure_mode": "wrong_params",
+      "efficiency": "wasteful",
+      "reasoning_quality": "poor",
+      "explanation": "The agent repeatedly called calculator and python_eval with incorrect parameters (missing 'expression' argument) and failed to resolve the error within the step limit. The correct tool was not used properly, leading to no valid answer.",
+      "task_id": "d07"
+    },
+    {
+      "task_completed": true,
+      "correct_tool_used": false,
+      "tool_usage_quality": "wrong",
+      "answer_quality": "correct",
+      "failure_mode": "wrong_params",
+      "efficiency": "wasteful",
+      "reasoning_quality": "poor",
+      "explanation": "The agent failed to use the correct parameters for the tool, resulting in errors, but arrived at the correct final answer through other means. The tool was not used properly, leading to wasted steps.",
+      "task_id": "d08"
+    }
+  ],
+  "hidden_state_analysis": {
+    "error": "no hidden states directory"
+  },
+  "timestamp": "2026-03-08 09:28:23",
+  "judge_model": "self"
+}
