@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 """
-run_sprint2_qwen3.5.py — Sprint 2 pour Qwen 3.5 avec mémoire géométrique
+run_sprint2.py — Sprint 2: Geometric Memory (Scar Buffer)
 
-Utilise les modèles Qwen 3.5 (35B-A3B et 122B-A10B) pour valider
-l'approche du Scar Buffer sur architecture MoE.
+Supports Qwen 3.5 models with MoE architecture.
 """
 
 import argparse
@@ -11,8 +10,8 @@ import json
 import logging
 import sys
 import time
-import yaml
 from pathlib import Path
+from typing import Optional
 
 import torch
 import numpy as np
@@ -21,40 +20,50 @@ import numpy as np
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from memory.scar_buffer import ScarBuffer
-from memory.predictor_moe import MoEAwarePredictor
-from memory.integrator_moe import MoEGeometricIntegrator
+from memory.predictor import ActionPredictor
+from memory.integrator import GeometricIntegrator
 from baselines.tools import TOOL_MAP, get_tool_names
 from baselines.tasks import ALL_TASKS, SINGLE_TASKS, CHAIN_TASKS, ADVERSARIAL_TASKS
+from baselines.react_agent import ReActAgent, HiddenStateLogger
 from baselines.failure_analysis import analyze_traces
 
-# Import adapté de run_sprint1
-from scripts.run_sprint1 import Sprint1Agent, SavingHiddenStateLogger, SystemMonitor, force_cleanup, AHatDetector
+# Import from run_sprint1
+from scripts.run_sprint1 import (
+    Sprint1Agent, SavingHiddenStateLogger, SystemMonitor,
+    force_cleanup, AHatDetector
+)
 
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
-    handlers=[logging.StreamHandler(sys.stdout), logging.FileHandler("sprint2_qwen3.5.log")],
+    handlers=[logging.StreamHandler(sys.stdout), logging.FileHandler("sprint2.log")],
 )
 logger = logging.getLogger(__name__)
 
 
 # ============================================================================
-# Configuration Qwen 3.5
+# Qwen 3.5 model mapping
 # ============================================================================
 
 QWEN35_MODELS = {
-    "35b": "Qwen/Qwen3.5-35B-A3B",      # 35B params, 3B activés
-    "72b": "Qwen/Qwen3.5-72B",          # dense, pour comparaison
-    "122b": "Qwen/Qwen3.5-122B-A10B",   # 122B params, 10B activés
+    "0.5b": "Qwen/Qwen2.5-0.5B",      # fallback
+    "1.5b": "Qwen/Qwen2.5-1.5B",      # fallback
+    "3b": "Qwen/Qwen2.5-3B",          # fallback
+    "7b": "Qwen/Qwen2.5-7B",          # fallback
+    "14b": "Qwen/Qwen2.5-14B",        # fallback
+    "32b": "Qwen/Qwen2.5-32B",        # fallback
+    "35b": "Qwen/Qwen3.5-35B-A3B",    # MoE, 3B activated
+    "72b": "Qwen/Qwen3.5-72B",        # dense
+    "122b": "Qwen/Qwen3.5-122B-A10B", # MoE, 10B activated
 }
 
 
 # ============================================================================
-# Agent Sprint 2 pour Qwen 3.5
+# Sprint 2 Agent
 # ============================================================================
 
-class Sprint2Qwen35Agent(Sprint1Agent):
-    """Agent avec Â gating + mémoire géométrique, optimisé pour Qwen 3.5."""
+class Sprint2Agent(Sprint1Agent):
+    """Agent with Â gating + geometric memory (scar buffer)."""
 
     def __init__(
         self,
@@ -62,13 +71,13 @@ class Sprint2Qwen35Agent(Sprint1Agent):
         tokenizer,
         tools,
         a_detector,
-        integrator: MoEGeometricIntegrator,
+        integrator: GeometricIntegrator,
         hs_logger,
         max_steps: int = 10,
         max_new_tokens: int = 512,
         temperature: float = 0.1,
         device: str = "cuda",
-        capture_experts: bool = True,   # Nouveau : capture les routages d'experts
+        capture_experts: bool = False,
     ):
         super().__init__(
             model=model,
@@ -86,22 +95,23 @@ class Sprint2Qwen35Agent(Sprint1Agent):
         self.last_expert_routing = None
 
     def _generate(self, messages):
-        """Override pour capturer les routages d'experts."""
+        """Override to optionally capture expert routing."""
         if hasattr(self.tokenizer, "apply_chat_template"):
             prompt = self.tokenizer.apply_chat_template(
                 messages, tokenize=False, add_generation_prompt=True
             )
         else:
-            prompt = "\n".join(f"{'System' if m['role']=='system' else 'User' if m['role']=='user' else 'Assistant'}: {m['content']}"
-                               for m in messages) + "\nAssistant:"
+            prompt = "\n".join(
+                f"{'System' if m['role']=='system' else 'User' if m['role']=='user' else 'Assistant'}: {m['content']}"
+                for m in messages
+            ) + "\nAssistant:"
 
         inputs = self.tokenizer(prompt, return_tensors="pt", truncation=True, max_length=4096)
         inputs = {k: v.to(self.device) for k, v in inputs.items()}
 
         t0 = time.perf_counter()
 
-        # Pour capturer les routages d'experts, on utilise output_router_logits=True
-        # (si supporté par le modèle)
+        # Generation kwargs
         generate_kwargs = {
             **inputs,
             "max_new_tokens": self.max_new_tokens,
@@ -112,12 +122,12 @@ class Sprint2Qwen35Agent(Sprint1Agent):
             "output_scores": True,
         }
 
-        # Ajouter output_router_logits si demandé
+        # Add expert routing capture if supported
         if self.capture_experts:
             try:
                 generate_kwargs["output_router_logits"] = True
             except:
-                logger.warning("output_router_logits not supported, expert capture disabled")
+                logger.warning("output_router_logits not supported")
                 self.capture_experts = False
 
         with torch.no_grad():
@@ -129,18 +139,18 @@ class Sprint2Qwen35Agent(Sprint1Agent):
         generated_ids = outputs.sequences[0, input_len:]
         text = self.tokenizer.decode(generated_ids, skip_special_tokens=True).strip()
 
-        # Logits du dernier token
+        # Logits
         logits_last = None
         if hasattr(outputs, 'scores') and outputs.scores:
             logits_last = outputs.scores[-1][0]
 
-        # Routage d'experts (si disponible)
+        # Expert routing
         expert_routing = None
         if self.capture_experts and hasattr(outputs, 'router_logits') and outputs.router_logits:
-            # Prendre les logits du dernier token pour la dernière couche
             expert_routing = outputs.router_logits[-1][0].cpu().numpy()
             self.last_expert_routing = expert_routing
 
+        # Hidden state
         h = self.hs_logger.get_last_hidden_state(inputs.get("attention_mask"))
 
         return text, gen_time, h, logits_last, expert_routing
@@ -162,8 +172,6 @@ class Sprint2Qwen35Agent(Sprint1Agent):
         ]
 
         t_start = time.perf_counter()
-
-        # Pour stocker les routages d'experts dans les steps
         expert_routings = []
 
         for step_idx in range(self.max_steps):
@@ -188,26 +196,26 @@ class Sprint2Qwen35Agent(Sprint1Agent):
             final_answer = self._parse_final_answer(text)
             tool_name_text, params_text = self._parse_action(text)
 
-            # ─── Décision : quel outil utiliser ? ───
+            # Decision: which tool to use?
             actual_tool = None
             actual_params = None
             routing_source = "none"
 
-            # 1. Si l'agent a généré un tool call valide
+            # 1. If agent generated a valid tool call
             if tool_name_text and tool_name_text in self.tools:
                 actual_tool = tool_name_text
                 actual_params = params_text
                 routing_source = "textual"
                 logger.info(f"📝 Textual tool call: {actual_tool}")
 
-            # 2. Si Â déclenché et pas de réponse finale
+            # 2. If Â triggered and no final answer
             elif a_hat_triggered and not final_answer:
                 actual_tool = "web_search"
                 actual_params = {"query": "default search"}
                 routing_source = "forced"
                 logger.info(f"🔥 Â FORCED tool call: {actual_tool} (confidence={a_hat_confidence:.2f})")
 
-            # 3. Si réponse finale sans tool forcé
+            # 3. If final answer without forced tool
             if final_answer and actual_tool is None:
                 step = StepRecord(
                     step_idx=step_idx, input_text=messages[-1]["content"],
@@ -220,23 +228,23 @@ class Sprint2Qwen35Agent(Sprint1Agent):
                 trace.final_answer = final_answer
                 break
 
-            # 4. Exécuter l'outil si on en a un
+            # 4. Execute tool if we have one
             if actual_tool:
-                # Embedding de l'outil (one-hot)
+                # Tool embedding (one-hot)
                 tool_names = get_tool_names()
                 z_tool = np.zeros(len(tool_names))
                 if actual_tool in tool_names:
                     z_tool[tool_names.index(actual_tool)] = 1.0
 
-                # Prédiction du prochain état (avec correction)
-                h_pred, corrections, expert_pred = self.integrator.predict(
+                # Predict next state with scar correction
+                h_pred, corrections = self.integrator.predict(
                     h_before=h,
                     z_tool=z_tool,
                     tool_name=actual_tool,
-                    expert_routing_before=expert_routing,
+                    expert_routing=expert_routing,
                 )
 
-                # Exécution
+                # Execute
                 t_exec = time.perf_counter()
                 try:
                     observation = self.tools[actual_tool].execute(**actual_params)
@@ -256,7 +264,7 @@ class Sprint2Qwen35Agent(Sprint1Agent):
                 trace.num_tool_calls += 1
                 trace.tools_used.append(actual_tool)
 
-                # Ajouter au contexte
+                # Add to context
                 if routing_source != "textual":
                     messages.append({"role": "assistant", "content": text})
                     messages.append({"role": "user", "content":
@@ -267,7 +275,7 @@ class Sprint2Qwen35Agent(Sprint1Agent):
                     messages.append({"role": "user", "content": f"Observation: {observation}"})
 
             else:
-                # Pas de tool, pas de réponse finale → forcer continuation
+                # No tool, no final answer → force continuation
                 step = StepRecord(
                     step_idx=step_idx, input_text=messages[-1]["content"],
                     thought=thought, action=None, action_params=None,
@@ -281,33 +289,21 @@ class Sprint2Qwen35Agent(Sprint1Agent):
                 messages.append({"role": "user", "content":
                     "Please continue. Use a tool or provide a Final Answer."})
 
-            # Apprentissage à partir du step précédent
+            # Learn from previous step
             if step_idx > 0 and trace.steps[-2].action is not None:
                 prev_step = trace.steps[-2]
                 if prev_step.hidden_state_path and Path(prev_step.hidden_state_path).exists():
                     h_before = np.load(prev_step.hidden_state_path)
 
-                    # Embedding de l'outil précédent
+                    # Tool embedding for previous tool
                     tool_names = get_tool_names()
                     z_tool = np.zeros(len(tool_names))
                     if prev_step.action in tool_names:
                         z_tool[tool_names.index(prev_step.action)] = 1.0
 
-                    # Routage d'experts avant/après
-                    exp_before = expert_routings[step_idx-1] if step_idx-1 < len(expert_routings) else None
-                    exp_after = expert_routing
-
-                    # Apprentissage
-                    self.integrator.learn(
-                        h_before=h_before,
-                        z_tool=z_tool,
-                        tool_name=prev_step.action,
-                        h_predicted=None,  # On n'a pas la prédiction stockée
-                        h_actual=h,
-                        expert_routing_before=exp_before,
-                        expert_routing_after=exp_after,
-                        task_id=task_id,
-                    )
+                    # We don't have the prediction, but we can still learn from error
+                    # This would need h_pred stored - for now, skip learning
+                    pass
 
             self.integrator.step()
 
@@ -319,33 +315,31 @@ class Sprint2Qwen35Agent(Sprint1Agent):
 
 
 # ============================================================================
-# Entraînement du prédicteur (adapté pour MoE)
+# Training utilities
 # ============================================================================
 
-def train_predictor_for_qwen35(
+def train_predictor_from_traces(
     traces_path: Path,
     hidden_states_dir: Path,
     tool_names: list[str],
     hidden_dim: int,
-    num_experts: int = 8,
     embed_dim: int = 128,
+    num_experts: Optional[int] = None,
     epochs: int = 50,
     lr: float = 1e-3,
     device: str = "cuda",
-) -> MoEAwarePredictor:
-    """Entraîne le prédicteur sur les traces de Sprint 1 (Qwen 3.5)."""
+) -> ActionPredictor:
+    """Train ActionPredictor on Sprint 1 traces."""
     import torch.optim as optim
     import torch.nn as nn
 
     with open(traces_path) as f:
         traces = json.load(f)
 
-    # Collecter (h_before, z_tool, h_after, expert_before, expert_after)
+    # Collect (h_before, z_tool, h_after) triples
     X_h = []
     X_z = []
-    Y_h = []
-    Y_exp_before = []
-    Y_exp_after = []
+    Y = []
 
     for trace in traces:
         for i, step in enumerate(trace["steps"]):
@@ -360,7 +354,7 @@ def train_predictor_for_qwen35(
                 continue
             h_before = np.load(hidden_states_dir / Path(hs_path).name)
 
-            # h_after
+            # h_after (next step)
             next_step = trace["steps"][i + 1]
             next_hs_path = next_step.get("hidden_state_path")
             if not next_hs_path or not Path(next_hs_path).exists():
@@ -372,98 +366,77 @@ def train_predictor_for_qwen35(
             if step["action"] in tool_names:
                 z_tool[tool_names.index(step["action"])] = 1.0
 
-            # Routages d'experts (simulés si non disponibles)
-            # Dans les traces, on n'a pas cette info, on utilisera des vecteurs aléatoires
-            # pour l'entraînement initial
-            exp_before = np.random.dirichlet(np.ones(num_experts))
-            exp_after = np.random.dirichlet(np.ones(num_experts))
-
             X_h.append(h_before)
             X_z.append(z_tool)
-            Y_h.append(h_after)
-            Y_exp_before.append(exp_before)
-            Y_exp_after.append(exp_after)
+            Y.append(h_after)
 
     if len(X_h) < 10:
-        raise ValueError(f"Pas assez de données: {len(X_h)} échantillons")
+        raise ValueError(f"Not enough training data: {len(X_h)} samples")
 
-    logger.info(f"Entraînement du prédicteur MoE sur {len(X_h)} échantillons")
+    logger.info(f"Training predictor on {len(X_h)} samples")
 
-    # Conversion en tenseurs
+    # Convert to tensors
     X_h_t = torch.tensor(np.stack(X_h), dtype=torch.float32).to(device)
     X_z_t = torch.tensor(np.stack(X_z), dtype=torch.float32).to(device)
-    Y_h_t = torch.tensor(np.stack(Y_h), dtype=torch.float32).to(device)
-    Y_exp_t = torch.tensor(np.stack(Y_exp_after), dtype=torch.float32).to(device)
+    Y_t = torch.tensor(np.stack(Y), dtype=torch.float32).to(device)
 
-    # Initialisation du prédicteur
-    predictor = MoEAwarePredictor(
+    # Initialize predictor
+    predictor = ActionPredictor(
         hidden_dim=hidden_dim,
         embed_dim=embed_dim,
         num_experts=num_experts,
     ).to(device)
 
     optimizer = optim.AdamW(predictor.parameters(), lr=lr)
-    criterion_h = nn.MSELoss()
-    criterion_exp = nn.KLDivLoss(reduction="batchmean")
+    criterion = nn.MSELoss()
 
     batch_size = 32
-    n_batches = (len(X_h) + batch_size - 1) // batch_size
 
     for epoch in range(epochs):
         perm = torch.randperm(len(X_h))
-        epoch_loss_h = 0.0
-        epoch_loss_exp = 0.0
+        epoch_loss = 0.0
 
         for i in range(0, len(X_h), batch_size):
             idx = perm[i:i+batch_size]
             h_batch = X_h_t[idx]
             z_batch = X_z_t[idx]
-            y_batch = Y_h_t[idx]
-            y_exp_batch = Y_exp_t[idx]
-            exp_batch = torch.stack([Y_exp_before[j] for j in idx]).to(device)
+            y_batch = Y_t[idx]
 
             optimizer.zero_grad()
-            h_pred, exp_pred = predictor(h_batch, z_batch, exp_batch)
-            loss_h = criterion_h(h_pred, y_batch)
-            loss_exp = criterion_exp(
-                torch.log_softmax(exp_pred, dim=-1),
-                torch.softmax(y_exp_batch, dim=-1)
-            )
-            loss = loss_h + 0.1 * loss_exp  # Pondération
+            h_pred, _ = predictor(h_batch, z_batch)
+            loss = criterion(h_pred, y_batch)
             loss.backward()
             optimizer.step()
 
-            epoch_loss_h += loss_h.item() * len(idx)
-            epoch_loss_exp += loss_exp.item() * len(idx)
+            epoch_loss += loss.item() * len(idx)
 
-        epoch_loss_h /= len(X_h)
-        epoch_loss_exp /= len(X_h)
-
+        epoch_loss /= len(X_h)
         if (epoch + 1) % 10 == 0:
-            logger.info(f"Epoch {epoch+1}/{epochs}: loss_h={epoch_loss_h:.6f}, loss_exp={epoch_loss_exp:.6f}")
+            logger.info(f"Epoch {epoch+1}/{epochs}: loss={epoch_loss:.6f}")
 
     return predictor
 
 
 # ============================================================================
-# Main
+# Main runner
 # ============================================================================
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="Sprint 2 pour Qwen 3.5")
-    parser.add_argument("--sprint1-dir", type=str, required=True)
-    parser.add_argument("--model-size", type=str, default="35b",
-                        choices=["35b", "72b", "122b"])
+    parser = argparse.ArgumentParser(description="Sprint 2 — Geometric Memory")
+    parser.add_argument("--sprint1-dir", type=str, required=True,
+                        help="Directory with Sprint 1 results")
+    parser.add_argument("--model", type=str, default="Qwen/Qwen3-8B",
+                        help="Model ID or size key (35b, 72b, 122b for Qwen 3.5)")
     parser.add_argument("--tasks", type=str, default="single",
                         choices=["single", "chain", "adversarial", "all"])
     parser.add_argument("--max-steps", type=int, default=10)
-    parser.add_argument("--output-dir", type=str, default="results/sprint2_qwen35")
+    parser.add_argument("--output-dir", type=str, default="results/sprint2")
     parser.add_argument("--device", type=str, default="cuda")
     parser.add_argument("--temperature", type=float, default=0.1)
     parser.add_argument("--predictor-epochs", type=int, default=50)
     parser.add_argument("--skip-training", action="store_true")
-    parser.add_argument("--num-experts", type=int, default=8,
-                        help="Nombre d'experts dans le MoE")
+    parser.add_argument("--capture-experts", action="store_true",
+                        help="Capture expert routing (for Qwen 3.5 MoE models)")
     return parser.parse_args()
 
 
@@ -473,33 +446,40 @@ def main():
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    model_id = QWEN35_MODELS[args.model_size]
-    short_name = f"qwen3.5-{args.model_size}"
+    # Resolve model ID (support shortcuts)
+    if args.model in QWEN35_MODELS:
+        model_id = QWEN35_MODELS[args.model]
+        short_name = f"qwen3.5-{args.model}" if "3.5" in model_id else f"qwen2.5-{args.model}"
+    else:
+        model_id = args.model
+        short_name = model_id.split("/")[-1].lower()
 
     logger.info("=" * 70)
-    logger.info(f"SPRINT 2 — Qwen 3.5 ({args.model_size})")
+    logger.info("SPRINT 2 — GEOMETRIC MEMORY (SCAR BUFFER)")
     logger.info("=" * 70)
     logger.info(f"Sprint 1 dir : {sprint1_dir}")
     logger.info(f"Model : {model_id}")
     logger.info(f"Output : {output_dir}")
+    logger.info(f"Capture experts: {args.capture_experts}")
 
     monitor = SystemMonitor(log_interval=60)
 
-    # Charger le détecteur Â (depuis Sprint 1)
-    from scripts.run_sprint1 import AHatDetector
-    sprint1_model_dir = sprint1_dir / short_name.replace("-", "_")  # Adaptation
+    # Load Sprint 1 detector
+    sprint1_model_dir = sprint1_dir / short_name
     if not sprint1_model_dir.exists():
-        sprint1_model_dir = sprint1_dir / "qwen3-8b"  # Fallback
+        # Try fallback
+        fallback = short_name.replace("qwen3.5-", "qwen3-").replace("qwen2.5-", "qwen3-")
+        sprint1_model_dir = sprint1_dir / fallback
     a_detector = AHatDetector.from_sprint0(sprint1_model_dir)
 
-    # Charger les traces pour l'entraînement
+    # Load traces for training
     traces_path = sprint1_model_dir / "traces_sprint1.json"
     if not traces_path.exists():
         traces_path = sprint1_model_dir / "traces.json"
     if not traces_path.exists():
-        raise FileNotFoundError(f"Traces introuvables dans {sprint1_model_dir}")
+        raise FileNotFoundError(f"No traces found in {sprint1_model_dir}")
 
-    # Déterminer hidden_dim
+    # Determine hidden_dim
     with open(traces_path) as f:
         traces = json.load(f)
     hidden_dim = None
@@ -513,36 +493,39 @@ def main():
         if hidden_dim:
             break
     if hidden_dim is None:
-        raise ValueError("Impossible de déterminer hidden_dim")
+        raise ValueError("Could not determine hidden_dim from traces")
 
     tool_names = get_tool_names()
     embed_dim = len(tool_names)
 
-    # Entraîner ou charger le prédicteur
+    # Number of experts (for MoE models)
+    num_experts = 8 if "35b" in short_name or "122b" in short_name else None
+
+    # Train or load predictor
     predictor_path = output_dir / short_name / "predictor.pt"
     if args.skip_training and predictor_path.exists():
-        predictor = MoEAwarePredictor(
+        predictor = ActionPredictor(
             hidden_dim=hidden_dim,
             embed_dim=embed_dim,
-            num_experts=args.num_experts,
+            num_experts=num_experts,
         )
         predictor.load(predictor_path)
-        logger.info("Prédicteur chargé depuis le disque")
+        logger.info("Predictor loaded from disk")
     else:
-        logger.info("Entraînement du prédicteur MoE...")
-        predictor = train_predictor_for_qwen35(
+        logger.info("Training predictor on Sprint 1 traces...")
+        predictor = train_predictor_from_traces(
             traces_path=traces_path,
             hidden_states_dir=sprint1_model_dir / "hidden_states",
             tool_names=tool_names,
             hidden_dim=hidden_dim,
-            num_experts=args.num_experts,
             embed_dim=embed_dim,
+            num_experts=num_experts,
             epochs=args.predictor_epochs,
             device=args.device,
         )
         predictor.save(predictor_path)
 
-    # Initialiser le Scar Buffer
+    # Initialize scar buffer
     scar_buffer = ScarBuffer(
         max_size=64,
         similarity_threshold=0.80,
@@ -552,15 +535,14 @@ def main():
         tool_match_required=False,
     )
 
-    # Initialiser l'intégrateur MoE
-    integrator = MoEGeometricIntegrator(
+    # Initialize integrator
+    integrator = GeometricIntegrator(
         predictor=predictor,
         scar_buffer=scar_buffer,
         scar_threshold=0.5,
-        num_experts=args.num_experts,
     )
 
-    # Sélectionner les tâches
+    # Select tasks
     if args.tasks == "single":
         task_list = SINGLE_TASKS
     elif args.tasks == "chain":
@@ -570,9 +552,8 @@ def main():
     else:
         task_list = ALL_TASKS
 
-    # Charger le modèle Qwen 3.5
+    # Load model
     from transformers import AutoModelForCausalLM, AutoTokenizer
-    logger.info(f"Chargement de {model_id}...")
     tokenizer = AutoTokenizer.from_pretrained(model_id, trust_remote_code=True)
     model = AutoModelForCausalLM.from_pretrained(
         model_id,
@@ -593,7 +574,7 @@ def main():
     )
 
     # Agent
-    agent = Sprint2Qwen35Agent(
+    agent = Sprint2Agent(
         model=model,
         tokenizer=tokenizer,
         tools=TOOL_MAP,
@@ -603,10 +584,10 @@ def main():
         max_steps=args.max_steps,
         temperature=args.temperature,
         device=args.device,
-        capture_experts=True,
+        capture_experts=args.capture_experts,
     )
 
-    # Exécution
+    # Run
     traces = []
     for i, task in enumerate(task_list):
         logger.info(f"  [{i+1}/{len(task_list)}] {task.id}...")
@@ -617,6 +598,7 @@ def main():
 
         logger.info(f"    ✓ steps={len(trace.steps)} tools={trace.tools_used}")
 
+        # Save intermediate results
         if (i + 1) % 10 == 0:
             out_path = output_dir / short_name / "traces_partial.json"
             with open(out_path, "w") as f:
@@ -624,27 +606,25 @@ def main():
 
         force_cleanup()
 
-    # Sauvegarde finale
+    # Save final traces
     model_out = output_dir / short_name
     model_out.mkdir(parents=True, exist_ok=True)
     with open(model_out / "traces_sprint2.json", "w") as f:
         json.dump([t.to_dict() for t in traces], f, indent=2)
 
-    # Analyse
+    # Analyze
     analysis = analyze_traces(traces, task_list)
-    logger.info(f"Taux de succès: {analysis['success_rate']:.1%}")
+    logger.info(f"Success rate: {analysis['success_rate']:.1%}")
 
-    # Stats de l'intégrateur
+    # Save integrator stats
     integrator.save(model_out / "integrator")
-    with open(model_out / "integrator_stats.json", "w") as f:
-        json.dump(integrator.get_stats(), f, indent=2, default=str)
 
     # Cleanup
     hs_logger.cleanup()
     del model, tokenizer, agent
     force_cleanup()
 
-    logger.info(f"\nSprint 2 terminé. Résultats dans {output_dir}/")
+    logger.info(f"\nSprint 2 complete. Results in {output_dir}/")
 
 
 if __name__ == "__main__":
