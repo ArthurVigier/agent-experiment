@@ -1,0 +1,13 @@
+{
+	"folders": [
+		{
+			"name": "jepa-agent 4",
+			"path": ".."
+		},
+		{
+			"name": "QWENJSON",
+			"path": "../../QWENJSON"
+		}
+	],
+  "settings": {}
+}
