@@ -1,4 +1,4 @@
-# JEPA-Agent — Geometric Agency for LLM Tool Use
+# Agent-Experiment — Geometric Agency for LLM Tool Use
 
 *An AI agent based on Joint Embedding Predictive Architecture.*
 Sprint 0: baseline + diagnostics + Â validation + **geometric scaling analysis**.
